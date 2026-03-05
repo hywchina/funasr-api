@@ -50,7 +50,7 @@ docker-compose up -d
 docker-compose -f docker-compose-cpu.yml up -d
 
 # Multi-GPU auto mode (one instance per visible GPU)
-NVIDIA_VISIBLE_DEVICES=0,1,2,3 docker-compose up -d
+CUDA_VISIBLE_DEVICES=0,1,2,3 docker-compose up -d
 ```
 
 Service URLs:
@@ -69,7 +69,7 @@ docker run -d --name funasr-api \
   --gpus all \
   -p 17003:8000 \
   -e ENABLED_MODELS=auto \
-  -e NVIDIA_VISIBLE_DEVICES=0,1,2,3 \
+  -e CUDA_VISIBLE_DEVICES=0,1,2,3 \
   -e API_KEY=your_api_key \
   -v ./models/modelscope:/root/.cache/modelscope \
   -v ./models/huggingface:/root/.cache/huggingface \

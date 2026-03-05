@@ -4,8 +4,8 @@ set -euo pipefail
 DEFAULT_CMD_1="/opt/venv/bin/python"
 DEFAULT_CMD_2="start.py"
 
-normalize_visible_devices() {
-  local raw="${NVIDIA_VISIBLE_DEVICES:-}"
+normalize_cuda_devices() {
+  local raw="${CUDA_VISIBLE_DEVICES:-}"
   raw="${raw// /}"
 
   if [[ -z "$raw" || "$raw" == "none" || "$raw" == "void" ]]; then
@@ -247,5 +247,5 @@ if [[ $# -gt 0 && "$has_default_cmd" != "true" ]]; then
   exec "$@"
 fi
 
-devices_csv="$(normalize_visible_devices)"
+devices_csv="$(normalize_cuda_devices)"
 start_internal_nginx_mode "$devices_csv"

@@ -32,7 +32,7 @@ docker-compose up -d
 ### 多 GPU 自动并行部署（推荐）
 
 适用于并发量较高场景。该方案通过容器 entrypoint 自动完成：
-- 根据 `NVIDIA_VISIBLE_DEVICES` 拉起多个 ASR 实例（每张卡 1 个实例）
+- 根据 `CUDA_VISIBLE_DEVICES` 拉起多个 ASR 实例（每张卡 1 个实例）
 - 容器内自动生成 Nginx upstream 并负载均衡到各实例
 - 对外仍只暴露一个服务端口（默认 `8000`）
 
@@ -40,13 +40,13 @@ docker-compose up -d
 
 ```bash
 # 4 卡示例：GPU0,1,2,3 各启动 1 个实例
-NVIDIA_VISIBLE_DEVICES=0,1,2,3 docker-compose up -d
+CUDA_VISIBLE_DEVICES=0,1,2,3 docker-compose up -d
 ```
 
 常用组合：
-- 单卡（保持默认）：`NVIDIA_VISIBLE_DEVICES=0`
-- 双卡：`NVIDIA_VISIBLE_DEVICES=0,1`
-- 四卡：`NVIDIA_VISIBLE_DEVICES=0,1,2,3`
+- 单卡（保持默认）：`CUDA_VISIBLE_DEVICES=0`
+- 双卡：`CUDA_VISIBLE_DEVICES=0,1`
+- 四卡：`CUDA_VISIBLE_DEVICES=0,1,2,3`
 
 **服务访问地址：**
 - API 服务: `http://localhost:17003`
@@ -171,7 +171,7 @@ docker build -t funasr-api:gpu-latest -f Dockerfile.gpu .
 | 环境变量 | 默认值 | 说明 |
 |----------|--------|------|
 | `DEVICE` | `auto` | 设备选择：`auto`, `cpu`, `cuda:0` |
-| `NVIDIA_VISIBLE_DEVICES` | - | 可见的 GPU 设备 |
+| `CUDA_VISIBLE_DEVICES` | `0` | 可见的 GPU 设备，控制启动实例数量 |
 
 ### 内置 Nginx 与限流配置
 
@@ -318,7 +318,7 @@ services:
       - DEBUG=false
       - LOG_LEVEL=INFO
       - DEVICE=auto
-      - NVIDIA_VISIBLE_DEVICES=0,1
+      - CUDA_VISIBLE_DEVICES=0,1
       - NGINX_RATE_LIMIT_RPS=20
       - NGINX_RATE_LIMIT_BURST=40
       - WORKERS=1
