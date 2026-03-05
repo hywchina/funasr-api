@@ -9,14 +9,25 @@ ENV DEBIAN_FRONTEND=noninteractive \
     PATH=/opt/venv/bin:$PATH \
     VIRTUAL_ENV=/opt/venv
 
-# Install system packages required for audio processing
+# Add NVIDIA apt repository for CUDA packages
 RUN apt-get update && apt-get install -y --no-install-recommends \
+        ca-certificates \
+        gnupg \
+        wget \
+    && wget -qO - https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86_64/3bf863cc.pub | apt-key add - \
+    && echo "deb https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86_64 /" > /etc/apt/sources.list.d/cuda.list \
+    && apt-get update
+
+# Install system packages required for audio processing
+# Note: cuda-nvcc-12-6 and build-essential are required for FlashInfer JIT compilation
+RUN apt-get install -y --no-install-recommends \
         ffmpeg \
         sox \
         libsox-dev \
         libsndfile1 \
         nginx \
-        build-essential
+        build-essential \
+        cuda-nvcc-12-6
 
 WORKDIR /app
 
@@ -27,9 +38,8 @@ COPY requirements.txt /tmp/requirements.txt
 RUN uv venv /opt/venv && \
     uv pip install --no-cache -r /tmp/requirements.txt --python /opt/venv/bin/python
 
-# Clean apt packages and cache
-RUN apt remove -y build-essential && apt autoremove -y \
-    && apt-get clean && rm -rf /var/lib/apt/lists/*
+# Clean apt cache but keep build-essential and cuda-nvcc-12-6 for FlashInfer JIT compilation
+RUN apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Copy application code
 COPY . .
