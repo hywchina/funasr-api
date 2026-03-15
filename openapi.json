@@ -1,0 +1,1092 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "FunASR-API Server",
+    "description": "基于FunASR的语音识别API服务",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/stream/v1/asr": {
+      "post": {
+        "tags": [
+          "ASR"
+        ],
+        "summary": "语音识别（支持长音频）",
+        "description": "将音频文件转写为文本，兼容阿里云语音识别 RESTful API。\n\n## 功能特性\n- 支持多种音频格式：WAV, MP3, M4A, FLAC, OGG, AAC, AMR 等\n- 自动音频格式检测和转换\n- 支持长音频自动分段识别（返回带时间戳的分段结果）\n- 最大文件大小：{settings.MAX_AUDIO_SIZE // (1024 * 1024)}MB（可通过环境变量 MAX_AUDIO_SIZE 配置）\n\n## 可用模型\n- **paraformer-large**（默认）：高精度中文语音识别，内置VAD+标点（离线/实时）\n\n## 音频输入方式\n1. **请求体上传**：将音频二进制数据作为请求体发送\n2. **URL 下载**：通过 `audio_address` 参数指定音频文件 URL\n\n## 注意事项\n- `vocabulary_id` 参数用于传递热词，格式：`热词1 权重1 热词2 权重2`（如：`阿里巴巴 20 腾讯 15`）\n- 音频会自动转换为 16kHz 采样率进行识别",
+        "operationId": "asr_transcribe_stream_v1_asr_post",
+        "responses": {
+          "200": {
+            "description": "识别成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/ASRSuccessResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ASRErrorResponse"
+                    }
+                  ],
+                  "title": "Response Asr Transcribe Stream V1 Asr Post",
+                  "$ref": "#/components/schemas/ASRSuccessResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "请求参数错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ASRErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "认证失败",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ASRErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "服务器内部错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ASRErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "model_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 64,
+              "default": "paraformer-large",
+              "enum": [
+                "paraformer-large"
+              ],
+              "example": "paraformer-large"
+            },
+            "description": "ASR 模型 ID。可选值：paraformer-large（高精度中文语音识别，内置VAD+标点（离线/实时））。默认：paraformer-large"
+          },
+          {
+            "name": "audio_address",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 512,
+              "example": ""
+            },
+            "description": "音频文件 URL（HTTP/HTTPS）。指定此参数时，将从 URL 下载音频而非读取请求体"
+          },
+          {
+            "name": "sample_rate",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "enum": [8000, 16000, 22050, 24000],
+              "default": 16000,
+              "example": 16000
+            },
+            "description": "音频采样率（Hz），实际识别时会自动转换为 16kHz。支持：8000, 16000, 22050, 24000"
+          },
+          {
+            "name": "enable_speaker_diarization",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": true,
+              "example": true
+            },
+            "description": "是否启用说话人分离。启用后响应会包含 speaker_id 字段"
+          },
+          {
+            "name": "word_timestamps",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": true,
+              "example": true
+            },
+            "description": "是否返回字词级时间戳（仅 Qwen3-ASR 模型支持）"
+          },
+          {
+            "name": "vocabulary_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 512,
+              "example": "阿里巴巴 20 腾讯 15"
+            },
+            "description": "热词字符串，格式：`热词1 权重1 热词2 权重2`。权重范围 1-100，建议 10-30。可提升特定词汇的识别准确率"
+          },
+          {
+            "name": "X-NLS-Token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256,
+              "example": ""
+            },
+            "description": "访问令牌，用于身份认证。未配置 API_KEY 环境变量时可忽略"
+          }
+        ],
+        "requestBody": {
+          "description": "音频文件二进制数据。支持格式：WAV, MP3, M4A, FLAC, OGG, AAC, AMR 等。不使用 audio_address 参数时必需",
+          "content": {
+            "application/octet-stream": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            }
+          },
+          "required": false
+        }
+      }
+    },
+    "/stream/v1/asr/health": {
+      "get": {
+        "tags": [
+          "ASR"
+        ],
+        "summary": "ASR 服务健康检查",
+        "description": "检查语音识别服务的运行状态和资源使用情况。\n\n## 返回信息\n- **status**: 服务状态（healthy/unhealthy/error）\n- **model_loaded**: 默认模型是否已加载\n- **device**: 当前推理设备（cuda:0/cpu）\n- **loaded_models**: 已加载的模型列表\n- **memory_usage**: GPU 显存使用情况（仅 GPU 模式）\n- **asr_model_mode**: 当前模型加载模式（offline/realtime/all）",
+        "operationId": "health_check_stream_v1_asr_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ASRHealthCheckResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/stream/v1/asr/models": {
+      "get": {
+        "tags": [
+          "ASR"
+        ],
+        "summary": "获取可用模型列表",
+        "description": "返回系统中所有可用的 ASR 模型信息。\n\n## 可用模型\n\n| 模型 ID | 名称 | 说明 | 支持实时 |\n|---------|------|------|----------|\n| qwen3-asr-1.7b | Qwen3-ASR 1.7B | 高性能多语言语音识别，vLLM后端，52种语言+方言 | ❌ |\n| qwen3-asr-0.6b | Qwen3-ASR 0.6B | 轻量版多语言ASR，适合小显存环境 | ❌ |\n| paraformer-large | Paraformer Large | 高精度中文语音识别 | ✅ |\n\n## 返回信息\n- **models**: 模型详细信息列表\n- **total**: 可用模型总数\n- **loaded_count**: 已加载到内存的模型数量\n- **asr_model_mode**: 当前模型加载模式",
+        "operationId": "list_models_stream_v1_asr_models_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ASRModelsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ws/v1/asr/test": {
+      "get": {
+        "tags": [
+          "WebSocket ASR"
+        ],
+        "summary": "Websocket Asr Test Page",
+        "description": "WebSocket ASR 测试页面",
+        "operationId": "websocket_asr_test_page_ws_v1_asr_test_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/models": {
+      "get": {
+        "tags": [
+          "OpenAI Compatible"
+        ],
+        "summary": "列出可用模型",
+        "description": "返回当前可用的 ASR 模型列表（OpenAI `/v1/models` 兼容）。\n\n**可用模型：**\n\n| 模型 ID | 说明 |\n|---------|------|\n| `paraformer-large` | 高精度中文 ASR，内置 VAD+标点（默认） |\n\n**兼容性说明：**\n- `whisper-1` 等 OpenAI 模型 ID 会自动映射到默认模型\n- 支持 OpenAI SDK 和第三方客户端调用\n- 当前默认模型根据显存自动选择：\u003C32GB 用 0.6b，\u003E=32GB 用 1.7b",
+        "operationId": "list_models_v1_models_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/audio/transcriptions": {
+      "post": {
+        "tags": [
+          "OpenAI Compatible"
+        ],
+        "summary": "音频转写",
+        "description": "将音频文件转写为文本（完全兼容 OpenAI Audio API）。\n\n**支持的音频格式：**\n`mp3`, `mp4`, `mpeg`, `mpga`, `m4a`, `wav`, `webm`, `flac`, `ogg`, `amr`, `pcm`\n\n**音频输入方式（二选一）：**\n1. **文件上传**：通过 `file` 参数上传音频文件（标准 OpenAI 方式）\n2. **URL 下载**：通过 `audio_address` 参数提供音频文件 URL（HTTP/HTTPS）\n\n**文件大小限制：**\n- 最大支持 2048MB（可通过 `MAX_AUDIO_SIZE` 环境变量配置）\n- OpenAI 原生限制为 25MB\n\n**说话人分离：**\n- 默认开启 (`enable_speaker_diarization=true`)\n- 启用后 `verbose_json` 格式的 segments 会包含 `speaker` 字段（如 \"说话人1\"）\n- 可设置 `enable_speaker_diarization=false` 关闭\n\n**输出格式：**\n| 格式 | Content-Type | 说明 |\n|------|-------------|------|\n| `json` | application/json | 简单 JSON，仅含 text 字段（默认） |\n| `text` | text/plain | 纯文本 |\n| `verbose_json` | application/json | 详细 JSON，含时间戳、分段和说话人 |\n| `srt` | text/plain | SRT 字幕格式 |\n| `vtt` | text/vtt | WebVTT 字幕格式 |\n\n**模型映射：**\n- `whisper-1` → 使用默认模型 (paraformer-large)\n- `paraformer-large` → 高精度中文 ASR\n\n**暂不支持的参数：**\n`prompt`、`temperature`、`timestamp_granularities` 参数已保留但暂不生效",
+        "operationId": "create_transcription_v1_audio_transcriptions_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_create_transcription_v1_audio_transcriptions_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "转写成功",
+            "content": {
+              "application/json": {
+                "schema": {
+
+                },
+                "example": {
+                  "text": "今天天气不错，明天可能会下雨。"
+                }
+              },
+              "text/plain": {
+                "example": "今天天气不错，明天可能会下雨。"
+              }
+            }
+          },
+          "400": {
+            "description": "请求错误",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error_code": "INVALID_PARAMETER",
+                  "message": "File too large. Maximum size is 2048MB",
+                  "task_id": "",
+                  "timestamp": "2025-01-31T12:00:00Z",
+                  "details": {
+
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "认证失败",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error_code": "AUTHENTICATION_FAILED",
+                  "message": "Invalid API key",
+                  "task_id": "",
+                  "timestamp": "2025-01-31T12:00:00Z",
+                  "details": {
+
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/": {
+      "get": {
+        "summary": "根路径",
+        "description": "API服务根路径",
+        "operationId": "root__get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ASRErrorResponse": {
+        "properties": {
+          "task_id": {
+            "type": "string",
+            "title": "Task Id",
+            "description": "任务ID"
+          },
+          "status": {
+            "type": "integer",
+            "title": "Status",
+            "description": "状态码"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "description": "响应消息"
+          },
+          "result": {
+            "type": "string",
+            "title": "Result",
+            "description": "识别结果（错误时为空）",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "task_id",
+          "status",
+          "message"
+        ],
+        "title": "ASRErrorResponse",
+        "description": "ASR错误响应模型",
+        "example": {
+          "message": "Gateway:ACCESS_DENIED:The token 'invalid_token' is invalid!",
+          "result": "",
+          "status": 40000001,
+          "task_id": "8bae3613dfc54ebfa811a17d8a7a1234"
+        }
+      },
+      "ASRHealthCheckResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "description": "服务状态",
+            "examples": [
+              "healthy"
+            ]
+          },
+          "version": {
+            "type": "string",
+            "title": "Version",
+            "description": "服务版本",
+            "examples": [
+              "1.0.0"
+            ]
+          },
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "description": "状态消息",
+            "examples": [
+              "Service is running normally"
+            ]
+          },
+          "model_loaded": {
+            "type": "boolean",
+            "title": "Model Loaded",
+            "description": "模型是否已加载"
+          },
+          "device": {
+            "type": "string",
+            "title": "Device",
+            "description": "推理设备"
+          },
+          "loaded_models": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Loaded Models",
+            "description": "已加载的模型列表",
+            "default": []
+          },
+          "memory_usage": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Memory Usage",
+            "description": "内存使用情况"
+          },
+          "asr_model_mode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Asr Model Mode",
+            "description": "当前ASR模型加载模式"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "version",
+          "message",
+          "model_loaded",
+          "device"
+        ],
+        "title": "ASRHealthCheckResponse",
+        "description": "ASR健康检查响应模型",
+        "example": {
+          "asr_model_mode": "realtime",
+          "device": "cuda:0",
+          "loaded_models": [
+            "paraformer-large"
+          ],
+          "memory_usage": {
+            "gpu_memory_total": "8.0GB",
+            "gpu_memory_used": "2.1GB"
+          },
+          "message": "ASR service is running normally",
+          "model_loaded": true,
+          "status": "healthy",
+          "version": "1.0.0"
+        }
+      },
+      "ASRModelInfo": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id",
+            "description": "模型id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "模型名称"
+          },
+          "engine": {
+            "type": "string",
+            "title": "Engine",
+            "description": "引擎类型"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description",
+            "description": "模型描述"
+          },
+          "languages": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Languages",
+            "description": "支持的语言列表"
+          },
+          "default": {
+            "type": "boolean",
+            "title": "Default",
+            "description": "是否为默认模型",
+            "default": false
+          },
+          "loaded": {
+            "type": "boolean",
+            "title": "Loaded",
+            "description": "是否已加载",
+            "default": false
+          },
+          "supports_realtime": {
+            "type": "boolean",
+            "title": "Supports Realtime",
+            "description": "是否支持实时识别",
+            "default": false
+          },
+          "offline_model": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Offline Model",
+            "description": "离线模型信息"
+          },
+          "realtime_model": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Realtime Model",
+            "description": "实时模型信息"
+          },
+          "asr_model_mode": {
+            "type": "string",
+            "title": "Asr Model Mode",
+            "description": "当前ASR模型加载模式"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "engine",
+          "description",
+          "languages",
+          "asr_model_mode"
+        ],
+        "title": "ASRModelInfo",
+        "description": "新的ASR模型信息模型，支持离线和实时模型分离",
+        "example": {
+          "asr_model_mode": "realtime",
+          "default": true,
+          "description": "高精度中文语音识别模型",
+          "engine": "funasr",
+          "id": "paraformer-large",
+          "languages": [
+            "zh"
+          ],
+          "loaded": true,
+          "name": "Paraformer Large",
+          "offline_model": {
+            "exists": true,
+            "path": "iic/speech_paraformer-large_asr_nat-zh-cn-16k-common-vocab8404-pytorch"
+          },
+          "realtime_model": {
+            "exists": true,
+            "path": "iic/speech_paraformer-large_asr_nat-zh-cn-16k-common-vocab8404-online"
+          },
+          "supports_realtime": true
+        }
+      },
+      "ASRModelsResponse": {
+        "properties": {
+          "models": {
+            "items": {
+              "$ref": "#/components/schemas/ASRModelInfo"
+            },
+            "type": "array",
+            "title": "Models",
+            "description": "模型列表"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total",
+            "description": "模型总数"
+          },
+          "loaded_count": {
+            "type": "integer",
+            "title": "Loaded Count",
+            "description": "已加载模型数量"
+          },
+          "asr_model_mode": {
+            "type": "string",
+            "title": "Asr Model Mode",
+            "description": "当前ASR模型加载模式"
+          }
+        },
+        "type": "object",
+        "required": [
+          "models",
+          "total",
+          "loaded_count",
+          "asr_model_mode"
+        ],
+        "title": "ASRModelsResponse",
+        "description": "ASR模型列表响应模型",
+        "example": {
+          "asr_model_mode": "realtime",
+          "loaded_count": 1,
+          "models": [
+            {
+              "asr_model_mode": "realtime",
+              "default": true,
+              "description": "高精度中文语音识别模型",
+              "engine": "funasr",
+              "id": "paraformer-large",
+              "languages": [
+                "zh"
+              ],
+              "loaded": true,
+              "name": "Paraformer Large",
+              "offline_model": {
+                "exists": true,
+                "path": "iic/speech_paraformer-large_asr_nat-zh-cn-16k-common-vocab8404-pytorch"
+              },
+              "realtime_model": {
+                "exists": true,
+                "path": "iic/speech_paraformer-large_asr_nat-zh-cn-16k-common-vocab8404-online"
+              },
+              "supports_realtime": true
+            }
+          ],
+          "total": 3
+        }
+      },
+      "ASRSegment": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "title": "Text",
+            "description": "该段识别文本"
+          },
+          "start_time": {
+            "type": "number",
+            "title": "Start Time",
+            "description": "段落开始时间（秒）"
+          },
+          "end_time": {
+            "type": "number",
+            "title": "End Time",
+            "description": "段落结束时间（秒）"
+          },
+          "speaker_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Speaker Id",
+            "description": "说话人ID（如 说话人1），仅启用说话人分离时返回"
+          },
+          "word_tokens": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/WordToken"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Word Tokens",
+            "description": "字词级时间戳（仅启用 word_timestamps 且模型支持时返回）"
+          }
+        },
+        "type": "object",
+        "required": [
+          "text",
+          "start_time",
+          "end_time"
+        ],
+        "title": "ASRSegment",
+        "description": "ASR 识别分段结果",
+        "example": {
+          "end_time": 2.5,
+          "speaker_id": "说话人1",
+          "start_time": 0,
+          "text": "今天天气不错。",
+          "word_tokens": [
+            {
+              "end_time": 0.15,
+              "start_time": 0,
+              "text": "今"
+            },
+            {
+              "end_time": 0.35,
+              "start_time": 0.15,
+              "text": "天"
+            }
+          ]
+        }
+      },
+      "ASRSuccessResponse": {
+        "properties": {
+          "task_id": {
+            "type": "string",
+            "title": "Task Id",
+            "description": "任务ID"
+          },
+          "status": {
+            "type": "integer",
+            "title": "Status",
+            "description": "状态码"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "description": "响应消息"
+          },
+          "result": {
+            "type": "string",
+            "maxLength": 100000,
+            "title": "Result",
+            "description": "识别结果文本（完整）"
+          },
+          "segments": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/ASRSegment"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Segments",
+            "description": "分段识别结果（含时间戳），仅长音频分段识别时返回"
+          },
+          "duration": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration",
+            "description": "音频总时长（秒）"
+          }
+        },
+        "type": "object",
+        "required": [
+          "task_id",
+          "status",
+          "message",
+          "result"
+        ],
+        "title": "ASRSuccessResponse",
+        "description": "ASR成功响应模型",
+        "example": {
+          "duration": 5.8,
+          "message": "SUCCESS",
+          "result": "今天天气不错。明天可能会下雨。",
+          "segments": [
+            {
+              "end_time": 2.5,
+              "speaker_id": "说话人1",
+              "start_time": 0,
+              "text": "今天天气不错。"
+            },
+            {
+              "end_time": 5.8,
+              "speaker_id": "说话人2",
+              "start_time": 3.2,
+              "text": "明天可能会下雨。"
+            }
+          ],
+          "status": 200,
+          "task_id": "cf7b0c5339244ee29cd4e43fb97f1234"
+        }
+      },
+      "Body_create_transcription_v1_audio_transcriptions_post": {
+        "properties": {
+          "file": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "binary"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "File",
+            "description": "要转写的音频文件，支持 mp3/wav/flac/ogg/m4a/amr/pcm 等格式（与 audio_address 二选一）"
+          },
+          "audio_address": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Audio Address",
+            "description": "音频文件 URL（HTTP/HTTPS）。指定此参数时，将从 URL 下载音频而非读取 file 参数"
+          },
+          "model": {
+            "type": "string",
+            "enum": [
+              "paraformer-large"
+            ],
+            "title": "Model",
+            "description": "ASR 模型选择",
+            "default": "paraformer-large"
+          },
+          "language": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Language",
+            "description": "音频语言代码（ISO-639-1），如 zh/en/ja，不填则自动检测",
+            "examples": [
+              "zh",
+              "en",
+              "ja"
+            ]
+          },
+          "enable_speaker_diarization": {
+            "type": "boolean",
+            "title": "Enable Speaker Diarization",
+            "description": "是否启用说话人分离（默认开启）。启用后响应 segments 会包含 speaker 字段",
+            "default": true
+          },
+          "word_timestamps": {
+            "type": "boolean",
+            "title": "Word Timestamps",
+            "description": "是否返回字词级时间戳（默认开启，仅 Qwen3-ASR 模型支持）",
+            "default": true
+          },
+          "response_format": {
+            "$ref": "#/components/schemas/ResponseFormat",
+            "description": "输出格式",
+            "default": "verbose_json",
+            "examples": [
+              "verbose_json",
+              "json",
+              "text",
+              "srt",
+              "vtt"
+            ]
+          },
+          "prompt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prompt",
+            "description": "提示文本（暂不支持，保留兼容）"
+          },
+          "temperature": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Temperature",
+            "description": "采样温度（暂不支持，保留兼容）",
+            "default": 0
+          },
+          "timestamp_granularities[]": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp Granularities[]",
+            "description": "时间戳粒度（暂不支持，保留兼容）"
+          }
+        },
+        "type": "object",
+        "title": "Body_create_transcription_v1_audio_transcriptions_post"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "ModelObject": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "object": {
+            "type": "string",
+            "title": "Object",
+            "default": "model"
+          },
+          "created": {
+            "type": "integer",
+            "title": "Created"
+          },
+          "owned_by": {
+            "type": "string",
+            "title": "Owned By",
+            "default": "funasr-api"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id"
+        ],
+        "title": "ModelObject",
+        "description": "模型对象"
+      },
+      "ModelsResponse": {
+        "properties": {
+          "object": {
+            "type": "string",
+            "title": "Object",
+            "default": "list"
+          },
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/ModelObject"
+            },
+            "type": "array",
+            "title": "Data"
+          }
+        },
+        "type": "object",
+        "required": [
+          "data"
+        ],
+        "title": "ModelsResponse",
+        "description": "模型列表响应"
+      },
+      "ResponseFormat": {
+        "type": "string",
+        "enum": [
+          "json",
+          "text",
+          "srt",
+          "verbose_json",
+          "vtt"
+        ],
+        "title": "ResponseFormat"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      },
+      "WordToken": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "title": "Text",
+            "description": "字词文本"
+          },
+          "start_time": {
+            "type": "number",
+            "title": "Start Time",
+            "description": "开始时间（秒）"
+          },
+          "end_time": {
+            "type": "number",
+            "title": "End Time",
+            "description": "结束时间（秒）"
+          }
+        },
+        "type": "object",
+        "required": [
+          "text",
+          "start_time",
+          "end_time"
+        ],
+        "title": "WordToken",
+        "description": "字词级时间戳信息",
+        "example": {
+          "end_time": 0.15,
+          "start_time": 0,
+          "text": "今"
+        }
+      }
+    }
+  }
+}

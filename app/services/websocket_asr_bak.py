@@ -125,13 +125,6 @@ class AliyunWebSocketASRService:
         empty_result_count = 0
         audio_buffer = np.array([], dtype=np.float32)  # 音频缓冲区，用于累积到完整chunk
         max_buffer_size = settings.WS_MAX_BUFFER_SIZE  # 最大缓冲区大小（样本数）
-        # === 说话人分离状态 ===
-        enable_diarization = False
-        full_session_audio = np.array([], dtype=np.float32)  # 全会话音频（用于说话人分离）
-        MAX_DIAR_AUDIO_SAMPLES = 16000 * 300  # 最多保留5分钟音频
-        session_audio_start_ms = 0  # full_session_audio[0] 对应的会话时间（ms）
-        last_diarization_segments: list = []  # 上次说话人分离结果缓存
-        last_diarization_audio_len = 0  # 上次运行分离时 full_session_audio 的长度
 
         logger.info(f"[{task_id}] WebSocket ASR连接开始")
 
@@ -181,16 +174,6 @@ class AliyunWebSocketASRService:
                                     sentence_texts = []
                                     sentence_texts_raw = []
                                     empty_result_count = 0
-                                    # 根据参数启用说话人分离
-                                    enable_diarization = transcription_params.get(
-                                        "enable_speaker_diarization", False
-                                    )
-                                    if enable_diarization:
-                                        full_session_audio = np.array([], dtype=np.float32)
-                                        session_audio_start_ms = 0
-                                        last_diarization_segments = []
-                                        last_diarization_audio_len = 0
-                                        logger.info(f"[{task_id}] 说话人分离已启用")
                                 else:
                                     await self._send_task_failed(
                                         websocket,
@@ -229,24 +212,6 @@ class AliyunWebSocketASRService:
                                             full_sentence_text, task_id
                                         )
 
-                                    # === 说话人分离：识别最终句说话人 ===
-                                    final_speaker_id = None
-                                    if enable_diarization and len(full_session_audio) > 0:
-                                        cur_sample_rate = transcription_params.get("sample_rate", 16000)
-                                        need_rerun = (
-                                            len(full_session_audio) - last_diarization_audio_len >= cur_sample_rate * 2
-                                            or not last_diarization_segments
-                                        )
-                                        if need_rerun:
-                                            last_diarization_segments = await self._run_session_diarization(
-                                                full_session_audio, cur_sample_rate, task_id
-                                            )
-                                            last_diarization_audio_len = len(full_session_audio)
-                                        start_sec = max(0.0, (sentence_start_time - session_audio_start_ms) / 1000.0)
-                                        end_sec = max(start_sec + 0.1, (audio_time - session_audio_start_ms) / 1000.0)
-                                        final_speaker_id = self._get_speaker_for_range(
-                                            last_diarization_segments, start_sec, end_sec
-                                        )
                                     await self._send_sentence_end(
                                         websocket,
                                         task_id,
@@ -257,7 +222,6 @@ class AliyunWebSocketASRService:
                                         enable_itn=transcription_params.get(
                                             "enable_inverse_text_normalization", True
                                         ),
-                                        speaker_id=final_speaker_id,
                                     )
 
                                 await self._send_transcription_completed(
@@ -364,16 +328,6 @@ class AliyunWebSocketASRService:
                                 # 提取标准大小的chunk
                                 audio_chunk = audio_buffer[:selected_chunk_size]
                                 audio_buffer = audio_buffer[selected_chunk_size:]
-
-                                # === 说话人分离：将所有音频累积到全会话缓冲区 ===
-                                if enable_diarization:
-                                    new_diar_len = len(full_session_audio) + len(audio_chunk)
-                                    if new_diar_len > MAX_DIAR_AUDIO_SAMPLES:
-                                        excess = new_diar_len - MAX_DIAR_AUDIO_SAMPLES
-                                        session_audio_start_ms += int(excess / sample_rate * 1000)
-                                        full_session_audio = full_session_audio[excess:]
-                                        last_diarization_audio_len = max(0, last_diarization_audio_len - excess)
-                                    full_session_audio = np.concatenate([full_session_audio, audio_chunk])
 
                                 # ========== 远场声音过滤 ==========
                                 # 动态阈值：句子活跃时降低阈值，避免句子中间音量波动导致丢帧
@@ -519,26 +473,6 @@ class AliyunWebSocketASRService:
                                         f"[{task_id}] 句子结束 #{sentence_index}: '{full_sentence_text}' "
                                         f"({sentence_duration}ms)"
                                     )
-                                    # === 说话人分离：识别本句说话人 ===
-                                    sentence_speaker_id = None
-                                    if enable_diarization and len(full_session_audio) > 0:
-                                        cur_sample_rate = transcription_params.get("sample_rate", 16000)
-                                        need_rerun = (
-                                            len(full_session_audio) - last_diarization_audio_len >= cur_sample_rate * 2
-                                            or not last_diarization_segments
-                                        )
-                                        if need_rerun:
-                                            last_diarization_segments = await self._run_session_diarization(
-                                                full_session_audio, cur_sample_rate, task_id
-                                            )
-                                            last_diarization_audio_len = len(full_session_audio)
-                                        start_sec = max(0.0, (sentence_start_time - session_audio_start_ms) / 1000.0)
-                                        end_sec = max(start_sec + 0.1, (audio_time - session_audio_start_ms) / 1000.0)
-                                        sentence_speaker_id = self._get_speaker_for_range(
-                                            last_diarization_segments, start_sec, end_sec
-                                        )
-                                        if sentence_speaker_id:
-                                            logger.debug(f"[{task_id}] 句子 #{sentence_index} 说话人: {sentence_speaker_id}")
                                     await self._send_sentence_end(
                                         websocket,
                                         task_id,
@@ -549,7 +483,6 @@ class AliyunWebSocketASRService:
                                         enable_itn=transcription_params.get(
                                             "enable_inverse_text_normalization", True
                                         ),
-                                        speaker_id=sentence_speaker_id,
                                     )
                                     sentence_active = False
                                     sentence_start_time = 0
@@ -653,7 +586,6 @@ class AliyunWebSocketASRService:
                 ),
                 "max_sentence_silence": payload.get("max_sentence_silence", 800),
                 "enable_words": payload.get("enable_words", False),
-                "enable_speaker_diarization": payload.get("enable_speaker_diarization", False),
             }
 
             logger.info(f"[{task_id}] StartTranscription参数解析成功: {params}")
@@ -1000,22 +932,12 @@ class AliyunWebSocketASRService:
         result: str,
         begin_time: int = 0,
         enable_itn: bool = False,
-        speaker_id: Optional[str] = None,
     ):
         """发送SentenceEnd响应"""
         if enable_itn and result:
             logger.debug(f"[{task_id}] 应用ITN: {result}")
             result = apply_itn_to_text(result)
             logger.debug(f"[{task_id}] ITN结果: {result}")
-
-        payload: dict = {
-            "index": index,
-            "time": time,
-            "result": result,
-            "begin_time": begin_time,
-        }
-        if speaker_id:
-            payload["speaker_id"] = speaker_id
 
         response = {
             "header": {
@@ -1026,65 +948,18 @@ class AliyunWebSocketASRService:
                 "status": AliyunASRStatus.SUCCESS,
                 "status_message": "GATEWAY|SUCCESS|Success.",
             },
-            "payload": payload,
+            "payload": {
+                "index": index,
+                "time": time,
+                "result": result,
+                "begin_time": begin_time,
+            },
         }
         try:
             await websocket.send_text(json.dumps(response, ensure_ascii=False))
         except Exception as e:
             logger.debug(f"[{task_id}] 发送SentenceEnd失败，客户端可能已断开: {e}")
             raise WebSocketDisconnect()
-
-    async def _run_session_diarization(
-        self, audio_array: np.ndarray, sample_rate: int, task_id: str
-    ) -> list:
-        """对全会话音频运行说话人分离，返回 SpeakerSegment 列表"""
-        import tempfile
-        import os as _os
-
-        tmp_path = None
-        try:
-            duration_sec = len(audio_array) / sample_rate
-            if duration_sec < 1.0:
-                logger.debug(f"[{task_id}] 音频时长不足1秒，跳过说话人分离")
-                return []
-
-            with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as f:
-                tmp_path = f.name
-            await run_sync(sf.write, tmp_path, audio_array, sample_rate)
-
-            from ..utils.speaker_diarizer import SpeakerDiarizer
-            diarizer = SpeakerDiarizer()
-            segments = await run_sync(diarizer.diarize, tmp_path)
-            logger.debug(f"[{task_id}] 说话人分离完成，共 {len(segments)} 个片段")
-            return segments
-        except Exception as e:
-            logger.warning(f"[{task_id}] 说话人分离失败，继续无说话人信息: {e}")
-            return []
-        finally:
-            if tmp_path:
-                try:
-                    _os.unlink(tmp_path)
-                except Exception:
-                    pass
-
-    def _get_speaker_for_range(
-        self, segments: list, start_sec: float, end_sec: float
-    ) -> Optional[str]:
-        """从说话人分离结果中找出指定时间范围（秒）内占比最多的说话人"""
-        if not segments or end_sec <= start_sec:
-            return None
-
-        speaker_overlap: dict = {}
-        for seg in segments:
-            overlap_start = max(start_sec, seg.start_sec)
-            overlap_end = min(end_sec, seg.end_sec)
-            if overlap_end > overlap_start:
-                dur = overlap_end - overlap_start
-                speaker_overlap[seg.speaker_id] = speaker_overlap.get(seg.speaker_id, 0) + dur
-
-        if not speaker_overlap:
-            return None
-        return max(speaker_overlap, key=speaker_overlap.get)
 
     async def _send_transcription_completed(self, websocket, task_id: str):
         """发送TranscriptionCompleted响应"""
