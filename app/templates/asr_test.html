@@ -136,11 +136,6 @@
             flex-wrap: wrap;
         }
 
-        .advanced-toggle {
-            text-align: center;
-            margin: 10px 0 16px;
-        }
-
         .advanced-settings {
             display: none;
             padding: 12px;
@@ -159,21 +154,6 @@
 </head>
 <body>
     <div class="container">
-        <!-- 动态标题 -->
-        <div class="header">
-            <h1 id="pageTitle">🩺 医院AI辅助诊断语音助手</h1>
-            <p id="pageDesc">用于门诊问诊、病房沟通与医疗记录整理的实时语音转写模块</p>
-        </div>
-
-        <!-- 模块说明 -->
-        <div class="protocol-info" id="protocolInfo">
-            <strong>模块说明：</strong>本页面支持通过麦克风实时录音并进行语音转写。点击"开始识别"后，医患对话将实时转换为文字，可在结束后进行说话人身份映射与结果复制。
-        </div>
-
-        <div class="advanced-toggle">
-            <button id="toggleAdvancedBtn" type="button" onclick="toggleAdvancedSettings()">⚙️ 显示高级参数</button>
-        </div>
-
         <div id="advancedSettings" class="advanced-settings">
             <!-- 公共配置：WebSocket地址 -->
             <div class="form-row">
@@ -256,6 +236,7 @@
             <button id="stopBtn" onclick="stopRecognition()" disabled class="danger">🛑 停止识别</button>
             <button onclick="clearLog()">🗑️ 清空日志</button>
             <button onclick="clearResult()">🗑️ 清空结果</button>
+            <button id="toggleAdvancedBtn" type="button" onclick="toggleAdvancedSettings()">⚙️ 显示高级参数</button>
         </div>
 
         <div id="status" class="status info">准备就绪，点击"开始识别"按钮开始</div>
