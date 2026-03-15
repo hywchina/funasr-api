@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>ASR实时语音识别测试（含说话人分离）</title>
+    <title>医院AI辅助诊断语音助手</title>
     <meta charset="utf-8">
     <style>
         body { font-family: Arial, sans-serif; margin: 20px; background-color: #f5f5f5; }
@@ -37,40 +37,8 @@
         .stat-label { font-size: 12px; color: #666; }
         .protocol-info { background: #e7f3ff; padding: 15px; margin: 15px 0; border-radius: 4px; border-left: 4px solid #007bff; }
 
-        /* 协议切换标签样式 */
-        .protocol-tabs {
-            display: flex;
-            justify-content: center;
-            gap: 10px;
-            margin-bottom: 20px;
-            padding-bottom: 15px;
-            border-bottom: 2px solid #e9ecef;
-        }
-        .tab-btn {
-            padding: 12px 30px;
-            font-size: 16px;
-            border-radius: 25px;
-            background: #f8f9fa;
-            color: #666;
-            border: 2px solid #dee2e6;
-            transition: all 0.3s ease;
-        }
-        .tab-btn:hover {
-            background: #e9ecef;
-            transform: translateY(-2px);
-        }
-        .tab-btn.active {
-            background: #007bff;
-            color: white;
-            border-color: #007bff;
-            box-shadow: 0 4px 12px rgba(0,123,255,0.3);
-        }
-
         /* 动态配置区 */
         .config-section {
-            display: none;
-        }
-        .config-section.active {
             display: block;
         }
 
@@ -137,71 +105,121 @@
             color: #666;
             margin-bottom: 6px;
         }
+
+        .mapping-row {
+            display: grid;
+            grid-template-columns: 1.1fr 1fr 1fr 1.2fr 1.2fr;
+            gap: 10px;
+            align-items: end;
+            margin-bottom: 10px;
+            padding: 10px;
+            border-radius: 6px;
+            background: #fff;
+            border: 1px solid #e5e5e5;
+        }
+        .mapping-title {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 3px;
+        }
+        .mapping-help {
+            color: #666;
+            font-size: 12px;
+            margin-bottom: 8px;
+        }
+        .result-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+        }
+
+        .advanced-toggle {
+            text-align: center;
+            margin: 10px 0 16px;
+        }
+
+        .advanced-settings {
+            display: none;
+            padding: 12px;
+            margin-bottom: 10px;
+            border: 1px dashed #ced4da;
+            border-radius: 8px;
+            background: #fafbfc;
+        }
+
+        @media (max-width: 900px) {
+            .mapping-row {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <!-- 协议切换标签 -->
-        <div class="protocol-tabs">
-            <button onclick="switchProtocol('aliyun')" class="tab-btn active" id="tab-aliyun">阿里云</button>
-            <button onclick="switchProtocol('qwen3')" class="tab-btn" id="tab-qwen3">Qwen3-ASR</button>
-        </div>
-
         <!-- 动态标题 -->
         <div class="header">
-            <h1 id="pageTitle">🎤 阿里云实时语音识别测试</h1>
-            <p id="pageDesc">WebSocket流式语音识别协议 - StartTranscription → 发送音频流 → StopTranscription</p>
+            <h1 id="pageTitle">🩺 医院AI辅助诊断语音助手</h1>
+            <p id="pageDesc">用于门诊问诊、病房沟通与医疗记录整理的实时语音转写模块</p>
         </div>
 
-        <!-- 协议说明 -->
+        <!-- 模块说明 -->
         <div class="protocol-info" id="protocolInfo">
-            <strong>协议说明：</strong>本页面支持通过麦克风实时录音并进行语音识别。点击"开始识别"后，说话内容将实时转换为文字。
+            <strong>模块说明：</strong>本页面支持通过麦克风实时录音并进行语音转写。点击"开始识别"后，医患对话将实时转换为文字，可在结束后进行说话人身份映射与结果复制。
         </div>
 
-        <!-- 公共配置：WebSocket地址 -->
-        <div class="form-row">
-            <div class="form-group">
-                <label>WebSocket服务地址:</label>
-                <input type="text" id="wsUrl" value="ws://localhost:8000/ws/v1/asr/funasr" />
-            </div>
-            <div class="form-group small" id="tokenGroup">
-                <label>Token (可选):</label>
-                <input type="password" id="token" placeholder="访问令牌" />
-            </div>
+        <div class="advanced-toggle">
+            <button id="toggleAdvancedBtn" type="button" onclick="toggleAdvancedSettings()">⚙️ 显示高级参数</button>
         </div>
 
-        <!-- 阿里云配置区 -->
-        <div id="aliyun-config" class="config-section active">
+        <div id="advancedSettings" class="advanced-settings">
+            <!-- 公共配置：WebSocket地址 -->
             <div class="form-row">
                 <div class="form-group">
-                    <label>音频格式:</label>
-                    <select id="aliyun-format">
-                        <option value="pcm" selected>PCM (16位)</option>
-                    </select>
+                    <label>服务地址:</label>
+                    <input type="text" id="wsUrl" value="ws://localhost:8000/ws/v1/asr/funasr" />
                 </div>
-                <div class="form-group">
-                    <label>采样率:</label>
-                    <select id="aliyun-sampleRate">
-                        <option value="8000">8000</option>
-                        <option value="16000" selected>16000</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>中间结果:</label>
-                    <select id="aliyun-enableIntermediate">
-                        <option value="true" selected>开启</option>
-                        <option value="false">关闭</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>标点预测:</label>
-                    <select id="aliyun-enablePunctuation">
-                        <option value="true" selected>开启</option>
-                        <option value="false">关闭</option>
-                    </select>
+                <div class="form-group small" id="tokenGroup">
+                    <label>访问令牌 (可选):</label>
+                    <input type="password" id="token" placeholder="访问令牌" />
                 </div>
             </div>
-            <!-- 说话人分离配置行 -->
+
+            <!-- 参数配置区 -->
+            <div id="aliyun-config" class="config-section active">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>音频格式:</label>
+                        <select id="aliyun-format">
+                            <option value="pcm" selected>PCM (16位)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>采样率:</label>
+                        <select id="aliyun-sampleRate">
+                            <option value="8000">8000</option>
+                            <option value="16000" selected>16000</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>中间结果:</label>
+                        <select id="aliyun-enableIntermediate">
+                            <option value="true" selected>开启</option>
+                            <option value="false">关闭</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>标点预测:</label>
+                        <select id="aliyun-enablePunctuation">
+                            <option value="true" selected>开启</option>
+                            <option value="false">关闭</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
             <div class="form-row">
                 <div class="form-group">
                     <label>🧑‍🤝‍🧑 说话人分离:</label>
@@ -232,52 +250,6 @@
             </div>
         </div>
 
-        <!-- Qwen3配置区 -->
-        <div id="qwen3-config" class="config-section">
-            <div class="form-row">
-                <div class="form-group">
-                    <label>音频格式:</label>
-                    <select id="qwen3-format">
-                        <option value="pcm" selected>PCM (16位)</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>采样率:</label>
-                    <select id="qwen3-sampleRate">
-                        <option value="16000" selected>16000</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Chunk大小(秒):</label>
-                    <select id="qwen3-chunkSizeSec">
-                        <option value="0.5">0.5</option>
-                        <option value="1.0">1.0</option>
-                        <option value="2.0" selected>2.0</option>
-                        <option value="4.0">4.0</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>强制语言:</label>
-                    <select id="qwen3-language">
-                        <option value="" selected>自动检测</option>
-                        <option value="Chinese">Chinese</option>
-                        <option value="English">English</option>
-                        <option value="Japanese">Japanese</option>
-                        <option value="Korean">Korean</option>
-                        <option value="French">French</option>
-                        <option value="German">German</option>
-                        <option value="Spanish">Spanish</option>
-                    </select>
-                </div>
-            </div>
-            <div class="form-row">
-                <div class="form-group">
-                    <label>热词/上下文:</label>
-                    <input type="text" id="qwen3-context" placeholder="可选: 输入热词或上下文提示" />
-                </div>
-            </div>
-        </div>
-
         <!-- 公共控制按钮 -->
         <div class="controls">
             <button id="startBtn" onclick="startRecognition()" class="success">🎙️ 开始识别</button>
@@ -288,7 +260,7 @@
 
         <div id="status" class="status info">准备就绪，点击"开始识别"按钮开始</div>
 
-        <!-- 音频回放区（阿里云特有） -->
+        <!-- 音频回放区 -->
         <div id="audioPlaybackContainer" class="result-container" style="display: none;">
             <h3>🔊 录音回放:</h3>
             <audio id="audioPlayback" controls style="width: 100%; margin: 10px 0;"></audio>
@@ -318,18 +290,14 @@
                 <div class="stat-value" id="sentenceCount">0</div>
                 <div class="stat-label">句子数</div>
             </div>
-            <!-- 说话人数统计（阿里云说话人分离专属） -->
+            <!-- 说话人数统计 -->
             <div class="stat" id="speakerCountStat" style="display: none;">
                 <div class="stat-value" id="speakerCountVal">0</div>
                 <div class="stat-label">说话人数</div>
             </div>
-            <div class="stat" id="detectedLanguageStat" style="display: none;">
-                <div class="stat-value" id="detectedLanguage">-</div>
-                <div class="stat-label">检测语言</div>
-            </div>
         </div>
 
-        <!-- 说话人图例区（阿里云说话人分离专属） -->
+        <!-- 说话人图例区 -->
         <div id="speakerLegendContainer" class="speaker-legend-container" style="display: none;">
             <div class="speaker-legend-title">🧑‍🤝‍🧑 识别到的说话人：</div>
             <div id="speakerLegend" class="speaker-legend">
@@ -337,9 +305,19 @@
             </div>
         </div>
 
+        <div id="identityMappingContainer" class="result-container" style="display:none;">
+            <h3>说话人身份设置</h3>
+            <div class="mapping-help">点击“停止识别”后自动生成映射行。可通过“合并到”将多个说话人归并为同一人。</div>
+            <div id="identityRows"></div>
+            <button onclick="applyIdentityMappings()">应用身份映射</button>
+        </div>
+
         <!-- 公共结果区 -->
         <div class="result-container">
-            <h3>识别结果:</h3>
+            <div class="result-head">
+                <h3 style="margin:0;">识别结果:</h3>
+                <button id="copyResultBtn" onclick="copyTranscriptText()" disabled>📋 复制对话文本</button>
+            </div>
             <div id="resultText" class="result-text">等待识别...</div>
         </div>
 
@@ -363,15 +341,29 @@
             '#795548',  // 棕色 - 说话人8
         ];
 
-        // ==================== 协议配置对象 ====================
+        const IDENTITY_OPTIONS = {
+            hospital: [
+                { value: 'doctor', label: '医生' },
+                { value: 'nurse', label: '护士' },
+                { value: 'other_hospital', label: '医院其他' }
+            ],
+            patient: [
+                { value: 'patient', label: '患者' },
+                { value: 'accompany', label: '陪诊' },
+                { value: 'family', label: '家属' },
+                { value: 'other_patient', label: '病人侧其他' }
+            ]
+        };
+
+        // ==================== 语音助手配置对象 ====================
         const protocols = {
             aliyun: {
                 name: 'aliyun',
-                title: '🎤 阿里云实时语音识别测试',
-                desc: 'WebSocket流式语音识别协议 - StartTranscription → 发送音频流 → StopTranscription',
-                info: '<strong>协议说明：</strong>本页面支持通过麦克风实时录音并进行语音识别。点击"开始识别"后，说话内容将实时转换为文字。<br><strong>说话人分离：</strong>开启后，识别结果将按说话人分组显示，不同说话人使用不同颜色标识。',
+            title: '🩺 医院AI辅助诊断语音助手',
+            desc: '用于门诊问诊、病房沟通与医疗记录整理的实时语音转写模块',
+            info: '<strong>模块说明：</strong>本页面支持通过麦克风实时录音并进行语音转写。点击"开始识别"后，医患对话将实时转换为文字。<br><strong>说话人分离：</strong>开启后，识别结果将按说话人分组显示，不同说话人使用不同颜色标识。',
                 defaultUrl: 'ws://localhost:8000/ws/v1/asr/funasr',
-                // 阿里云特有状态
+                // 语音助手状态
                 taskId: null,
                 sentenceCount: 0,
                 sentences: {},
@@ -379,6 +371,9 @@
                 // 说话人分离状态
                 speakerColors: {},      // { speakerId: colorHex }
                 speakerCount: 0,        // 识别到的说话人总数
+                identityMappings: {},
+                stopTriggered: false,
+                mappingApplied: false,
 
                 // 构建开始消息
                 buildStartMsg: function(taskId) {
@@ -481,7 +476,13 @@
                             log(`🔴 句子结束 #${endIndex}${speakerInfo} (time: ${endTime}ms, duration: ${sentenceDuration}ms): "${finalText}"`, 'success');
                             log(`   [VAD] 句子完成: 开始=${beginTimeFromPayload}ms, 结束=${endTime}ms, 时长=${sentenceDuration}ms`, 'info');
 
+                            if (speakerId) {
+                                ensureSpeakerMapping(speakerId);
+                            }
                             this.updateResult(endIndex, finalText, true, speakerId);
+                            if (this.stopTriggered) {
+                                buildIdentityMappingRows();
+                            }
                             break;
                         }
 
@@ -490,6 +491,8 @@
                             log('🎉 识别完成', 'success');
                             updateStats();
                             saveRecordedAudio();
+                            buildIdentityMappingRows();
+                            document.getElementById('copyResultBtn').disabled = false;
                             if (websocket) {
                                 websocket.close();
                             }
@@ -516,8 +519,6 @@
                     if (!this.speakerColors[speakerId]) {
                         const idx = Object.keys(this.speakerColors).length;
                         this.speakerColors[speakerId] = SPEAKER_COLOR_PALETTE[idx % SPEAKER_COLOR_PALETTE.length];
-                        this.speakerCount = Object.keys(this.speakerColors).length;
-                        this._updateSpeakerLegend(speakerId);
                     }
                     return this.speakerColors[speakerId];
                 },
@@ -563,11 +564,14 @@
                         const idx = indices[i];
                         const sentence = this.sentences[idx];
                         const sid = sentence.speakerId;
-                        const color = (diarizationEnabled && sid) ? this.getSpeakerColor(sid) : null;
+                        const shouldUseMapping = this.stopTriggered && this.mappingApplied;
+                        const canonicalSid = diarizationEnabled && sid && shouldUseMapping ? resolveMergedSpeakerId(sid) : sid;
+                        const color = (diarizationEnabled && canonicalSid) ? this.getSpeakerColor(canonicalSid) : null;
+                        const speakerLabel = sid ? (shouldUseMapping ? getMappedSpeakerLabel(sid) : sid) : '';
 
                         let badgeHtml = '';
                         if (diarizationEnabled && sid && showSpeakerLabel) {
-                            badgeHtml = `<span class="speaker-badge" style="background:${color};">${sid}</span>`;
+                            badgeHtml = `<span class="speaker-badge" style="background:${color};">${speakerLabel}</span>`;
                         }
 
                         const lineClass = [
@@ -587,9 +591,7 @@
 
                     resultEl.innerHTML = displayHtml || '等待识别...';
                     resultEl.scrollTop = resultEl.scrollHeight;
-
-                    // 同步更新说话人数统计
-                    document.getElementById('speakerCountVal').textContent = this.speakerCount;
+                    refreshSpeakerLegend();
                 },
 
                 // 重置状态
@@ -600,10 +602,16 @@
                     this.recordedBlob = null;
                     this.speakerColors = {};
                     this.speakerCount = 0;
+                    this.identityMappings = {};
+                    this.stopTriggered = false;
+                    this.mappingApplied = false;
                     // 重置说话人图例
                     const legendEl = document.getElementById('speakerLegend');
                     legendEl.innerHTML = '<span style="color: #aaa; font-size: 12px;">识别开始后将在此显示说话人信息</span>';
                     document.getElementById('speakerCountVal').textContent = '0';
+                    document.getElementById('identityRows').innerHTML = '';
+                    document.getElementById('identityMappingContainer').style.display = 'none';
+                    document.getElementById('copyResultBtn').disabled = true;
                 },
 
                 // 获取采样率
@@ -619,191 +627,15 @@
                 // 显示/隐藏统计项
                 showStats: function() {
                     document.getElementById('sentenceCountStat').style.display = 'block';
-                    document.getElementById('detectedLanguageStat').style.display = 'none';
                     // 根据是否开启说话人分离显示对应统计
                     const diarizationEnabled = document.getElementById('aliyun-enableSpeakerDiarization') &&
                         document.getElementById('aliyun-enableSpeakerDiarization').value === 'true';
                     document.getElementById('speakerCountStat').style.display = diarizationEnabled ? 'block' : 'none';
                 }
-            },
-
-            qwen3: {
-                name: 'qwen3',
-                title: '🎤 Qwen3-ASR流式语音识别测试',
-                desc: 'WebSocket流式语音识别 - vLLM后端累积重推理机制 | 支持VAD自动截断',
-                info: '<strong>协议说明：</strong>本页面支持通过麦克风实时录音并进行语音识别。点击"开始识别"后，说话内容将实时转换为文字。<br><strong>VAD功能：</strong>连续2秒静音或累积60秒音频后自动截断，生成新段落继续识别。',
-                defaultUrl: 'ws://localhost:8000/ws/v1/asr/qwen',
-                // Qwen3特有状态（适配VAD多段落）
-                currentText: '',
-                currentSegmentText: '',
-                detectedLanguage: '',
-                segmentIndex: 0,
-                confirmedSegments: [],
-
-                // 构建开始消息
-                buildStartMsg: function() {
-                    const chunkSizeSec = parseFloat(document.getElementById('qwen3-chunkSizeSec').value);
-                    const language = document.getElementById('qwen3-language').value || null;
-                    const context = document.getElementById('qwen3-context').value;
-
-                    return {
-                        type: 'start',
-                        payload: {
-                            format: 'pcm',
-                            sample_rate: 16000,
-                            chunk_size_sec: chunkSizeSec,
-                            language: language,
-                            context: context,
-                            unfixed_chunk_num: 2,
-                            unfixed_token_num: 5
-                        }
-                    };
-                },
-
-                // 构建停止消息
-                buildStopMsg: function() {
-                    return { type: 'stop' };
-                },
-
-                // 处理消息（适配VAD截断消息）
-                handleMessage: async function(response) {
-                    const type = response.type || '';
-
-                    log('收到消息: ' + type, type === 'error' ? 'error' : 'success');
-
-                    switch (type) {
-                        case 'started':
-                            updateStatus('识别已启动，正在启动麦克风...', 'success');
-                            log('识别已启动，参数: ' + JSON.stringify(response.params), 'success');
-                            await startMicrophone();
-                            break;
-
-                        case 'result':
-                            if (response.results && response.results.length > 0) {
-                                const result = response.results[response.results.length - 1];
-                                const displayText = result.text || result.current_segment_text || '';
-                                const currentSegText = result.current_segment_text || result.text || '';
-                                log(`中间结果 [chunk ${result.chunk_id}]: "${currentSegText}"`, 'info');
-                                this.updateResult(displayText, currentSegText, result.language, result.segment_index);
-                            }
-                            break;
-
-                        case 'segment_end': {
-                            const segResult = response.result || {};
-                            const segText = segResult.text || segResult.segment_text || '';
-                            log(`段落 ${response.segment_index} 结束 (${response.reason}): "${segText.substring(0, 50)}${segText.length > 50 ? '...' : ''}"`, 'success');
-                            if (segText) {
-                                this.confirmedSegments.push({
-                                    index: response.segment_index,
-                                    text: segText,
-                                    reason: response.reason
-                                });
-                            }
-                            this.segmentIndex = response.segment_index + 1;
-                            updateStats();
-                            break;
-                        }
-
-                        case 'segment_start':
-                            log(`段落 ${response.segment_index} 开始`, 'info');
-                            this.segmentIndex = response.segment_index;
-                            this.currentSegmentText = '';
-                            updateStats();
-                            break;
-
-                        case 'final': {
-                            const finalResult = response.result;
-                            const fullText = finalResult.full_text || finalResult.text || '';
-                            this.updateResult(fullText, finalResult.text, finalResult.language);
-                            updateStatus('识别完成！', 'success');
-                            log(`识别完成！总段落: ${finalResult.total_segments}, 语言: ${finalResult.language}`, 'success');
-                            if (finalResult.segments && finalResult.segments.length > 0) {
-                                log('段落详情:', 'info');
-                                finalResult.segments.forEach((seg, idx) => {
-                                    log(`  [${idx}] ${seg.text.substring(0, 40)}${seg.text.length > 40 ? '...' : ''}`, 'info');
-                                });
-                            }
-                            updateStats();
-                            if (websocket) {
-                                websocket.close();
-                            }
-                            break;
-                        }
-
-                        case 'error':
-                            updateStatus('错误: ' + response.message, 'error');
-                            log('错误: ' + response.message, 'error');
-                            if (websocket) {
-                                websocket.close();
-                            }
-                            break;
-
-                        default:
-                            log('收到未知消息: ' + JSON.stringify(response), 'warning');
-                            break;
-                    }
-                },
-
-                // 更新结果显示（支持多段落显示）
-                updateResult: function(fullText, segmentText, language, segmentIdx) {
-                    const resultEl = document.getElementById('resultText');
-
-                    if (fullText) {
-                        this.currentText = fullText;
-                    }
-                    if (segmentText !== undefined) {
-                        this.currentSegmentText = segmentText;
-                    }
-                    if (segmentIdx !== undefined) {
-                        this.segmentIndex = segmentIdx;
-                    }
-
-                    const displayText = this.currentText || this.currentSegmentText || '';
-                    const displayHtml = displayText
-                        ? `<span style="color: #000; font-weight: 500;">${displayText}</span>`
-                        : '等待识别...';
-
-                    resultEl.innerHTML = displayHtml;
-                    resultEl.scrollTop = resultEl.scrollHeight;
-
-                    if (language) {
-                        this.detectedLanguage = language;
-                        updateStats();
-                    }
-                },
-
-                // 重置状态
-                reset: function() {
-                    this.currentText = '';
-                    this.currentSegmentText = '';
-                    this.detectedLanguage = '';
-                    this.segmentIndex = 0;
-                    this.confirmedSegments = [];
-                },
-
-                // 获取采样率
-                getSampleRate: function() {
-                    return 16000;
-                },
-
-                // 获取Chunk步长（动态）
-                getChunkStride: function() {
-                    const chunkSizeSec = parseFloat(document.getElementById('qwen3-chunkSizeSec').value);
-                    return Math.floor(16000 * chunkSizeSec);
-                },
-
-                // 显示统计
-                showStats: function() {
-                    document.getElementById('sentenceCountStat').style.display = 'block';
-                    document.getElementById('sentenceCount').textContent = this.segmentIndex;
-                    document.getElementById('detectedLanguageStat').style.display = 'block';
-                    document.getElementById('speakerCountStat').style.display = 'none';
-                }
             }
         };
 
         // ==================== 全局状态 ====================
-        let currentProtocol = 'aliyun';
         let websocket = null;
         let audioContext = null;
         let mediaStream = null;
@@ -847,15 +679,9 @@
         function updateStats() {
             document.getElementById('audioChunks').textContent = audioChunksCount;
             document.getElementById('audioSize').textContent = (audioSizeTotal / 1024).toFixed(1) + ' KB';
-            document.getElementById('connectionState').textContent = isRecording ? (currentProtocol === 'aliyun' ? '录音中' : '识别中') : '未连接';
-
-            if (currentProtocol === 'aliyun') {
-                document.getElementById('sentenceCount').textContent = protocols.aliyun.sentenceCount;
-                document.getElementById('speakerCountVal').textContent = protocols.aliyun.speakerCount;
-            } else {
-                document.getElementById('sentenceCount').textContent = protocols.qwen3.segmentIndex;
-                document.getElementById('detectedLanguage').textContent = protocols.qwen3.detectedLanguage || '-';
-            }
+            document.getElementById('connectionState').textContent = isRecording ? '录音中' : '未连接';
+            document.getElementById('sentenceCount').textContent = protocols.aliyun.sentenceCount;
+            document.getElementById('speakerCountVal').textContent = protocols.aliyun.speakerCount;
 
             if (startTime) {
                 const duration = (Date.now() - startTime) / 1000;
@@ -873,19 +699,17 @@
 
         function clearResult() {
             document.getElementById('resultText').textContent = '等待识别...';
-            if (currentProtocol === 'aliyun') {
-                protocols.aliyun.sentences = {};
-                protocols.aliyun.speakerColors = {};
-                protocols.aliyun.speakerCount = 0;
-                const legendEl = document.getElementById('speakerLegend');
-                legendEl.innerHTML = '<span style="color: #aaa; font-size: 12px;">识别开始后将在此显示说话人信息</span>';
-            } else {
-                protocols.qwen3.currentText = '';
-                protocols.qwen3.currentSegmentText = '';
-                protocols.qwen3.detectedLanguage = '';
-                protocols.qwen3.segmentIndex = 0;
-                protocols.qwen3.confirmedSegments = [];
-            }
+            protocols.aliyun.sentences = {};
+            protocols.aliyun.speakerColors = {};
+            protocols.aliyun.speakerCount = 0;
+            protocols.aliyun.identityMappings = {};
+            protocols.aliyun.stopTriggered = false;
+            protocols.aliyun.mappingApplied = false;
+            const legendEl = document.getElementById('speakerLegend');
+            legendEl.innerHTML = '<span style="color: #aaa; font-size: 12px;">识别开始后将在此显示说话人信息</span>';
+            document.getElementById('identityRows').innerHTML = '';
+            document.getElementById('identityMappingContainer').style.display = 'none';
+            document.getElementById('copyResultBtn').disabled = true;
             updateStats();
         }
 
@@ -913,50 +737,225 @@
             }
         }
 
-        // ==================== 协议切换 ====================
-        function switchProtocol(protocol) {
-            if (isRecording) {
-                updateStatus('请先停止当前识别任务', 'warning');
+        function toggleAdvancedSettings() {
+            const panel = document.getElementById('advancedSettings');
+            const btn = document.getElementById('toggleAdvancedBtn');
+            const isHidden = panel.style.display === 'none' || panel.style.display === '';
+
+            panel.style.display = isHidden ? 'block' : 'none';
+            btn.textContent = isHidden ? '⚙️ 隐藏高级参数' : '⚙️ 显示高级参数';
+        }
+
+        function getRoleLabel(category, role) {
+            const options = IDENTITY_OPTIONS[category] || [];
+            const found = options.find((item) => item.value === role);
+            return found ? found.label : '';
+        }
+
+        function ensureSpeakerMapping(speakerId) {
+            if (!speakerId) return;
+            if (!protocols.aliyun.identityMappings[speakerId]) {
+                protocols.aliyun.identityMappings[speakerId] = {
+                    category: 'hospital',
+                    role: 'doctor',
+                    name: '',
+                    mergeTo: speakerId
+                };
+            }
+        }
+
+        function resolveMergedSpeakerId(speakerId) {
+            if (!speakerId) return speakerId;
+            const mappings = protocols.aliyun.identityMappings;
+            const visited = new Set();
+            let current = speakerId;
+
+            while (mappings[current] && mappings[current].mergeTo && mappings[current].mergeTo !== current) {
+                if (visited.has(current)) break;
+                visited.add(current);
+                current = mappings[current].mergeTo;
+            }
+            return current;
+        }
+
+        function getMappedSpeakerLabel(speakerId) {
+            const canonical = resolveMergedSpeakerId(speakerId);
+            const cfg = protocols.aliyun.identityMappings[canonical];
+            if (!cfg) return canonical || speakerId || '';
+
+            const name = (cfg.name || '').trim();
+            if (name) return name;
+            const roleLabel = getRoleLabel(cfg.category, cfg.role);
+            if (roleLabel) return roleLabel;
+            return canonical || speakerId || '';
+        }
+
+        function getDetectedSpeakerIds() {
+            const set = new Set();
+            Object.values(protocols.aliyun.sentences).forEach((sentence) => {
+                if (sentence.speakerId) set.add(sentence.speakerId);
+            });
+            return Array.from(set).sort();
+        }
+
+        function refreshSpeakerLegend() {
+            const legendEl = document.getElementById('speakerLegend');
+            const ids = getDetectedSpeakerIds();
+            const shouldUseMapping = protocols.aliyun.stopTriggered && protocols.aliyun.mappingApplied;
+
+            if (ids.length === 0) {
+                legendEl.innerHTML = '<span style="color: #aaa; font-size: 12px;">识别开始后将在此显示说话人信息</span>';
+                protocols.aliyun.speakerCount = 0;
+                document.getElementById('speakerCountVal').textContent = '0';
                 return;
             }
 
-            currentProtocol = protocol;
-            const config = protocols[protocol];
+            const mergedSet = new Set();
+            const rows = ids.map((sid) => {
+                ensureSpeakerMapping(sid);
+                const canonical = shouldUseMapping ? resolveMergedSpeakerId(sid) : sid;
+                mergedSet.add(canonical);
+                const color = protocols.aliyun.getSpeakerColor(canonical);
+                const label = shouldUseMapping ? getMappedSpeakerLabel(sid) : sid;
+                const merged = shouldUseMapping && canonical !== sid ? ` (并入 ${canonical})` : '';
+                return `<div class="speaker-legend-item"><span class="speaker-dot" style="background:${color};"></span><span>${sid} → ${label}${merged}</span></div>`;
+            });
 
-            // 更新标签样式
-            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-            document.getElementById(`tab-${protocol}`).classList.add('active');
+            legendEl.innerHTML = rows.join('');
+            protocols.aliyun.speakerCount = mergedSet.size;
+            document.getElementById('speakerCountVal').textContent = String(protocols.aliyun.speakerCount);
+        }
 
-            // 更新标题和描述
-            document.getElementById('pageTitle').textContent = config.title;
-            document.getElementById('pageDesc').textContent = config.desc;
-            document.getElementById('protocolInfo').innerHTML = config.info;
+        function buildRoleOptions(category, selectedRole) {
+            const options = IDENTITY_OPTIONS[category] || [];
+            return options.map((item) => `<option value="${item.value}" ${item.value === selectedRole ? 'selected' : ''}>${item.label}</option>`).join('');
+        }
 
-            // 更新WebSocket地址
-            document.getElementById('wsUrl').value = config.defaultUrl;
+        function buildIdentityMappingRows() {
+            const ids = getDetectedSpeakerIds();
+            const container = document.getElementById('identityMappingContainer');
+            const rowsEl = document.getElementById('identityRows');
 
-            // 切换配置区显示
-            document.querySelectorAll('.config-section').forEach(section => section.classList.remove('active'));
-            document.getElementById(`${protocol}-config`).classList.add('active');
+            if (ids.length === 0) {
+                container.style.display = 'none';
+                return;
+            }
 
-            // 切换统计信息显示
-            config.showStats();
+            ids.forEach((sid) => ensureSpeakerMapping(sid));
 
-            // 隐藏音频回放区和说话人图例
-            document.getElementById('audioPlaybackContainer').style.display = 'none';
-            document.getElementById('speakerLegendContainer').style.display = protocol === 'aliyun' ? 'none' : 'none';
+            rowsEl.innerHTML = ids.map((sid) => {
+                const mapping = protocols.aliyun.identityMappings[sid];
+                return `
+                    <div class="mapping-row" data-speaker-id="${sid}">
+                        <div>
+                            <div class="mapping-title">原始说话人</div>
+                            <div><strong>${sid}</strong></div>
+                        </div>
+                        <div>
+                            <div class="mapping-title">身份大类</div>
+                            <select id="map-category-${sid}" onchange="onIdentityCategoryChange('${sid}')">
+                                <option value="hospital" ${mapping.category === 'hospital' ? 'selected' : ''}>医院</option>
+                                <option value="patient" ${mapping.category === 'patient' ? 'selected' : ''}>病人</option>
+                            </select>
+                        </div>
+                        <div>
+                            <div class="mapping-title">身份</div>
+                            <select id="map-role-${sid}" onchange="applyIdentityMappings()">
+                                ${buildRoleOptions(mapping.category, mapping.role)}
+                            </select>
+                        </div>
+                        <div>
+                            <div class="mapping-title">名称（可选）</div>
+                            <input id="map-name-${sid}" type="text" value="${mapping.name || ''}" oninput="applyIdentityMappings()" placeholder="如 王医生 / 患者1" />
+                        </div>
+                        <div>
+                            <div class="mapping-title">合并到</div>
+                            <select id="map-merge-${sid}" onchange="applyIdentityMappings()">
+                                ${ids.map((target) => `<option value="${target}" ${mapping.mergeTo === target ? 'selected' : ''}>${target}</option>`).join('')}
+                            </select>
+                        </div>
+                    </div>
+                `;
+            }).join('');
 
-            // 清空结果
-            clearResult();
-            clearLog();
+            container.style.display = 'block';
+            protocols.aliyun.mappingApplied = false;
+        }
 
-            log(`已切换到 ${protocol === 'aliyun' ? '阿里云' : 'Qwen3-ASR'} 协议`, 'success');
+        function onIdentityCategoryChange(speakerId) {
+            const categoryEl = document.getElementById(`map-category-${speakerId}`);
+            const roleEl = document.getElementById(`map-role-${speakerId}`);
+            if (!categoryEl || !roleEl) return;
+
+            const category = categoryEl.value;
+            const options = IDENTITY_OPTIONS[category] || [];
+            const fallbackRole = options.length > 0 ? options[0].value : '';
+            roleEl.innerHTML = buildRoleOptions(category, fallbackRole);
+            protocols.aliyun.mappingApplied = false;
+        }
+
+        function applyIdentityMappings() {
+            const ids = getDetectedSpeakerIds();
+            ids.forEach((sid) => {
+                ensureSpeakerMapping(sid);
+                const categoryEl = document.getElementById(`map-category-${sid}`);
+                const roleEl = document.getElementById(`map-role-${sid}`);
+                const nameEl = document.getElementById(`map-name-${sid}`);
+                const mergeEl = document.getElementById(`map-merge-${sid}`);
+                if (!categoryEl || !roleEl || !nameEl || !mergeEl) return;
+
+                protocols.aliyun.identityMappings[sid] = {
+                    category: categoryEl.value,
+                    role: roleEl.value,
+                    name: nameEl.value,
+                    mergeTo: mergeEl.value
+                };
+            });
+            protocols.aliyun.mappingApplied = true;
+
+            const entries = Object.keys(protocols.aliyun.sentences).map(Number).sort((a, b) => a - b);
+            if (entries.length === 0) {
+                refreshSpeakerLegend();
+                return;
+            }
+
+            const last = entries[entries.length - 1];
+            const s = protocols.aliyun.sentences[last];
+            protocols.aliyun.updateResult(last, s.text, s.isFinal, s.speakerId);
+        }
+
+        function buildTranscriptText() {
+            const indices = Object.keys(protocols.aliyun.sentences).map(Number).sort((a, b) => a - b);
+            const lines = [];
+            indices.forEach((idx) => {
+                const s = protocols.aliyun.sentences[idx];
+                if (!s || !s.text || !s.isFinal) return;
+                const label = s.speakerId ? getMappedSpeakerLabel(s.speakerId) : '未标注';
+                lines.push(`${label}: ${s.text}`);
+            });
+            return lines.join('\n');
+        }
+
+        async function copyTranscriptText() {
+            try {
+                const text = buildTranscriptText();
+                if (!text) {
+                    updateStatus('暂无可复制内容', 'warning');
+                    return;
+                }
+                await navigator.clipboard.writeText(text);
+                updateStatus('识别结果已复制到剪贴板', 'success');
+                log('📋 已复制识别结果', 'success');
+            } catch (e) {
+                updateStatus('复制失败: ' + e.message, 'error');
+                log('复制失败: ' + e.message, 'error');
+            }
         }
 
         // ==================== 音频采集 ====================
         async function startMicrophone() {
             try {
-                const protocol = protocols[currentProtocol];
+                const protocol = protocols.aliyun;
                 const sampleRate = protocol.getSampleRate();
                 const chunkStride = protocol.getChunkStride();
 
@@ -1028,8 +1027,7 @@
 
                             const durationMs = (chunkStride / sampleRate * 1000).toFixed(0);
                             if (mean > 0.001) {
-                                const prefix = currentProtocol === 'aliyun' ? '📤 ' : '';
-                                log(`${prefix}发送音频块 #${audioChunksCount}: size=${sendData.buffer.byteLength}B, samples=${chunkStride}, duration=${durationMs}ms, max=${max.toFixed(4)}, mean=${mean.toFixed(6)}`, 'info');
+                                log(`📤 发送音频块 #${audioChunksCount}: size=${sendData.buffer.byteLength}B, samples=${chunkStride}, duration=${durationMs}ms, max=${max.toFixed(4)}, mean=${mean.toFixed(6)}`, 'info');
                             }
                         }
 
@@ -1043,7 +1041,7 @@
                 isRecording = true;
                 document.getElementById('stopBtn').disabled = false;
                 updateStatus('正在识别中...请说话', 'success');
-                log(currentProtocol === 'aliyun' ? '✅ 麦克风已启动，开始录音' : '麦克风已启动，开始录音', 'success');
+                log('✅ 麦克风已启动，开始录音', 'success');
 
             } catch (e) {
                 log('麦克风启动失败: ' + e.message, 'error');
@@ -1056,7 +1054,7 @@
             const wsUrlInput = document.getElementById('wsUrl').value.trim();
             const token = document.getElementById('token').value.trim();
             const wsUrl = buildWebSocketUrl(wsUrlInput, token);
-            const protocol = protocols[currentProtocol];
+            const protocol = protocols.aliyun;
 
             if (isRecording) {
                 updateStatus('识别已在进行中', 'warning');
@@ -1072,10 +1070,8 @@
                 protocol.reset();
 
                 // 重置说话人统计显示
-                if (currentProtocol === 'aliyun') {
-                    const diarizationEnabled = document.getElementById('aliyun-enableSpeakerDiarization').value === 'true';
-                    document.getElementById('speakerCountStat').style.display = diarizationEnabled ? 'block' : 'none';
-                }
+                const diarizationEnabled = document.getElementById('aliyun-enableSpeakerDiarization').value === 'true';
+                document.getElementById('speakerCountStat').style.display = diarizationEnabled ? 'block' : 'none';
 
                 updateStatus('正在连接WebSocket...', 'info');
                 log('开始连接WebSocket: ' + (token ? `${wsUrlInput} (token 已通过 query 参数传递)` : wsUrlInput), 'info');
@@ -1086,17 +1082,10 @@
                 websocket.onopen = async () => {
                     updateStats();
                     updateStatus('WebSocket连接成功，正在发送开始消息...', 'success');
-                    log(currentProtocol === 'aliyun' ? '✅ WebSocket连接成功' : 'WebSocket连接成功', 'success');
-
-                    if (currentProtocol === 'aliyun') {
-                        const msg = protocol.buildStartMsg(protocol.taskId);
-                        websocket.send(JSON.stringify(msg));
-                        log('→ 发送StartTranscription: ' + JSON.stringify(msg.payload), 'info');
-                    } else {
-                        const msg = protocol.buildStartMsg();
-                        websocket.send(JSON.stringify(msg));
-                        log('发送Start消息: ' + JSON.stringify(msg), 'info');
-                    }
+                    log('✅ WebSocket连接成功', 'success');
+                    const msg = protocol.buildStartMsg(protocol.taskId);
+                    websocket.send(JSON.stringify(msg));
+                    log('→ 发送StartTranscription: ' + JSON.stringify(msg.payload), 'info');
                 };
 
                 websocket.onmessage = async (event) => {
@@ -1109,7 +1098,7 @@
                 };
 
                 websocket.onerror = (error) => {
-                    log('WebSocket错误' + (currentProtocol === 'aliyun' ? ': ' + error : ''), 'error');
+                    log('WebSocket错误: ' + error, 'error');
                     updateStatus('WebSocket连接错误', 'error');
                 };
 
@@ -1135,9 +1124,14 @@
         }
 
         async function stopRecognition() {
-            const protocol = protocols[currentProtocol];
+            const protocol = protocols.aliyun;
 
             if (websocket) {
+                protocol.stopTriggered = true;
+                protocol.mappingApplied = false;
+                document.getElementById('identityMappingContainer').style.display = 'block';
+                document.getElementById('copyResultBtn').disabled = false;
+
                 // 发送剩余音频
                 if (sendBuffer.length > 0) {
                     const currentBufferLength = sendBuffer.reduce((sum, chunk) => sum + chunk.length, 0);
@@ -1150,8 +1144,7 @@
                     websocket.send(mergedData.buffer);
                     const sampleRate = protocol.getSampleRate();
                     const durationMs = (currentBufferLength / sampleRate * 1000).toFixed(0);
-                    const prefix = currentProtocol === 'aliyun' ? '📤 ' : '';
-                    log(`${prefix}发送剩余音频: size=${mergedData.buffer.byteLength}B, samples=${currentBufferLength}, duration=${durationMs}ms`, 'info');
+                    log(`📤 发送剩余音频: size=${mergedData.buffer.byteLength}B, samples=${currentBufferLength}, duration=${durationMs}ms`, 'info');
                     sendBuffer = [];
                 }
 
@@ -1170,15 +1163,9 @@
                 }
 
                 // 发送停止消息
-                if (currentProtocol === 'aliyun') {
-                    const msg = protocol.buildStopMsg(protocol.taskId);
-                    websocket.send(JSON.stringify(msg));
-                    log('→ 发送StopTranscription', 'info');
-                } else {
-                    const msg = protocol.buildStopMsg();
-                    websocket.send(JSON.stringify(msg));
-                    log('发送Stop消息', 'info');
-                }
+                const msg = protocol.buildStopMsg(protocol.taskId);
+                websocket.send(JSON.stringify(msg));
+                log('→ 发送StopTranscription', 'info');
 
                 updateStatus('正在停止识别...', 'info');
                 document.getElementById('stopBtn').disabled = true;
@@ -1187,10 +1174,8 @@
             }
         }
 
-        // ==================== 阿里云特有功能：录音保存和下载 ====================
+        // ==================== 录音保存和下载 ====================
         function saveRecordedAudio() {
-            if (currentProtocol !== 'aliyun') return;
-
             if (recordedAudioChunks.length === 0) {
                 log('没有录音数据', 'warning');
                 return;
@@ -1261,8 +1246,6 @@
         }
 
         function downloadAudio() {
-            if (currentProtocol !== 'aliyun') return;
-
             const blob = protocols.aliyun.recordedBlob;
             if (!blob) {
                 log('没有可下载的录音', 'warning');
@@ -1284,7 +1267,7 @@
         window.onload = function() {
             updateStats();
             protocols.aliyun.showStats();
-            log('ASR实时语音识别测试页面已加载（含说话人分离功能，当前协议: 阿里云）', 'success');
+            log('医院AI辅助诊断语音助手页面已加载（含说话人分离功能）', 'success');
         };
 
         window.onbeforeunload = function() {
