@@ -18,7 +18,6 @@ docker run -d \
   -p 17003:8000 \
   -v "$(pwd)/temp:/app/temp" \
   -v "$(pwd)/logs:/app/logs" \
-  -v "$HOME/.cache/modelscope:/root/.cache/modelscope" \
   -e API_KEY="" \
   -e ENABLED_MODELS="paraformer-large" \
   -e MODELSCOPE_PATH="/root/.cache/modelscope/hub/models" \
@@ -31,6 +30,10 @@ docker run -d \
 
 ## 删除容器和镜像
 docker rm -f funasr-api-cpu && docker rmi -f funasr-api:v1.0.0
+
+## 打包镜像 && 加载镜像 
+docker save -o funasr-api:v1.0.0.tar  funasr-api:v1.0.0
+
 
 
 # 进入容器执行

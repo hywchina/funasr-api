@@ -53,6 +53,9 @@ COPY . .
 RUN mkdir -p /app/temp /app/data /app/logs \
     && chmod +x start.py /app/scripts/docker/entrypoint.sh
 
+# copy models
+COPY ./modelscope /root/.cache/modelscope 
+
 EXPOSE 8000
 
 ENTRYPOINT ["/app/scripts/docker/entrypoint.sh"]
