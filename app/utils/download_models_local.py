@@ -155,15 +155,8 @@ def fix_camplusplus_config() -> bool:
         是否修复成功
     """
     try:
-        from app.core.config import settings
-
-        cache_dir = Path(settings.MODELSCOPE_PATH).expanduser()
-        config_file = (
-            cache_dir
-            / "iic"
-            / "speech_campplus_speaker-diarization_common"
-            / "configuration.json"
-        )
+        cache_dir = Path.home() / ".cache" / "modelscope" / "hub" / "models"
+        config_file = cache_dir / "iic/speech_campplus_speaker-diarization_common/configuration.json"
 
         if not config_file.exists():
             return False
@@ -174,30 +167,23 @@ def fix_camplusplus_config() -> bool:
 
         # 需要替换的模型ID -> 本地路径映射
         replacements = {
-            "speaker_model": "damo/speech_campplus_sv_zh-cn_16k-common",
-            "change_locator": "damo/speech_campplus-transformer_scl_zh-cn_16k-common",
-            "vad_model": "damo/speech_fsmn_vad_zh-cn-16k-common-pytorch",
+            "damo/speech_campplus_sv_zh-cn_16k-common": str(cache_dir / "damo/speech_campplus_sv_zh-cn_16k-common"),
+            "damo/speech_campplus-transformer_scl_zh-cn_16k-common": str(cache_dir / "damo/speech_campplus-transformer_scl_zh-cn_16k-common"),
+            "damo/speech_fsmn_vad_zh-cn-16k-common-pytorch": str(cache_dir / "damo/speech_fsmn_vad_zh-cn-16k-common-pytorch"),
         }
 
         # 检查是否需要修改
         modified = False
         if "model" in config:
-            for key, model_id in replacements.items():
-                if key not in config["model"]:
-                    continue
-
-                expected_path = cache_dir / model_id
-                if not expected_path.exists():
-                    continue
-
-                old_value = str(config["model"][key]).strip()
-                new_value = str(expected_path)
-
-                # 统一将模型依赖修正为当前运行环境可访问的本地缓存路径。
-                # 这能修复宿主机写入的绝对路径（如 /Users/...）被挂载到容器后失效的问题。
-                if old_value != new_value:
-                    config["model"][key] = new_value
-                    modified = True
+            for key in ["speaker_model", "change_locator", "vad_model"]:
+                if key in config["model"]:
+                    old_value = config["model"][key]
+                    if old_value in replacements:
+                        new_value = replacements[old_value]
+                        # 检查本地路径是否存在
+                        if Path(new_value).exists():
+                            config["model"][key] = new_value
+                            modified = True
 
         # 写回配置文件
         if modified:

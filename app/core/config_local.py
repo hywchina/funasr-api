@@ -118,11 +118,6 @@ class Settings:
         # 设备配置
         self.DEVICE = os.getenv("DEVICE", self.DEVICE)
 
-        # 模型缓存路径配置xz
-        self.MODELSCOPE_PATH = os.path.expanduser(
-            os.getenv("MODELSCOPE_PATH", self.MODELSCOPE_PATH)
-        )
-
         # ASR模型配置
         self.ASR_ENABLE_REALTIME_PUNC = (
             os.getenv("ASR_ENABLE_REALTIME_PUNC", "true").lower() == "true"

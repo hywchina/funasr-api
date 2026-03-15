@@ -159,7 +159,7 @@
             <div class="form-row">
                 <div class="form-group">
                     <label>服务地址:</label>
-                    <input type="text" id="wsUrl" value="" />
+                    <input type="text" id="wsUrl" value="ws://localhost:8000/ws/v1/asr/funasr" />
                 </div>
                 <div class="form-group small" id="tokenGroup">
                     <label>访问令牌 (可选):</label>
@@ -343,7 +343,7 @@
             title: '🩺 医院AI辅助诊断语音助手',
             desc: '用于门诊问诊、病房沟通与医疗记录整理的实时语音转写模块',
             info: '<strong>模块说明：</strong>本页面支持通过麦克风实时录音并进行语音转写。点击"开始识别"后，医患对话将实时转换为文字。<br><strong>说话人分离：</strong>开启后，识别结果将按说话人分组显示，不同说话人使用不同颜色标识。',
-                defaultUrl: '',
+                defaultUrl: 'ws://localhost:8000/ws/v1/asr/funasr',
                 // 语音助手状态
                 taskId: null,
                 sentenceCount: 0,
@@ -718,22 +718,6 @@
             }
         }
 
-        function getDefaultWebSocketUrl() {
-            const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-            const host = window.location.host || 'localhost:8000';
-            return `${wsProtocol}//${host}/ws/v1/asr/funasr`;
-        }
-
-        function initDefaultWebSocketUrl() {
-            const wsUrlEl = document.getElementById('wsUrl');
-            const defaultUrl = getDefaultWebSocketUrl();
-            protocols.aliyun.defaultUrl = defaultUrl;
-
-            if (!wsUrlEl.value || wsUrlEl.value === 'ws://localhost:8000/ws/v1/asr/funasr') {
-                wsUrlEl.value = defaultUrl;
-            }
-        }
-
         function toggleAdvancedSettings() {
             const panel = document.getElementById('advancedSettings');
             const btn = document.getElementById('toggleAdvancedBtn');
@@ -1095,22 +1079,15 @@
                 };
 
                 websocket.onerror = (error) => {
-                    const readyStateMap = {
-                        0: 'CONNECTING',
-                        1: 'OPEN',
-                        2: 'CLOSING',
-                        3: 'CLOSED'
-                    };
-                    const readyState = websocket ? readyStateMap[websocket.readyState] || String(websocket.readyState) : 'UNKNOWN';
-                    log(`WebSocket错误: url=${wsUrl}, readyState=${readyState}`, 'error');
-                    updateStatus('WebSocket连接错误，请检查服务地址和容器端口映射', 'error');
+                    log('WebSocket错误: ' + error, 'error');
+                    updateStatus('WebSocket连接错误', 'error');
                 };
 
-                websocket.onclose = (event) => {
+                websocket.onclose = () => {
                     isRecording = false;
                     updateStats();
                     updateStatus('WebSocket连接已关闭', 'info');
-                    log(`WebSocket连接已关闭: code=${event.code}, reason=${event.reason || 'none'}, clean=${event.wasClean}`, event.code === 1000 ? 'info' : 'warning');
+                    log('WebSocket连接已关闭', 'info');
                     document.getElementById('startBtn').disabled = false;
                     document.getElementById('stopBtn').disabled = true;
 
@@ -1269,7 +1246,6 @@
 
         // ==================== 初始化 ====================
         window.onload = function() {
-            initDefaultWebSocketUrl();
             updateStats();
             protocols.aliyun.showStats();
             log('医院AI辅助诊断语音助手页面已加载（含说话人分离功能）', 'success');
