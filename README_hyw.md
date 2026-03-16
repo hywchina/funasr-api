@@ -25,7 +25,7 @@ docker run -d \
   -e HF_ENDPOINT="" \
   -e NGINX_RATE_LIMIT_RPS="0" \
   -e NGINX_RATE_LIMIT_BURST="0" \
-  --restart unless-stopped \
+  --restart=always \
   funasr-api:v1.0.0
 
 ## 删除容器和镜像
@@ -77,10 +77,11 @@ docker run -d \
   -e HF_ENDPOINT="" \
   -e NGINX_RATE_LIMIT_RPS="0" \
   -e NGINX_RATE_LIMIT_BURST="0" \
-  --restart unless-stopped \
+  --restart=always \
   funasr-api:v1.0.0
 
-  <!-- --restart=always -->
+  <!-- --restart=always
+  --restart unless-stopped  -->
   
 测试 ：
 http://localhost:17003/ws/v1/asr/test ： 正常
