@@ -79,6 +79,8 @@ docker run -d \
   -e NGINX_RATE_LIMIT_BURST="0" \
   --restart unless-stopped \
   funasr-api:v1.0.0
+
+  <!-- --restart=always -->
   
 测试 ：
 http://localhost:17003/ws/v1/asr/test ： 正常
